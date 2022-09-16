@@ -1,6 +1,7 @@
 # vim-TabJumper
 
 Vim plugin to show and jump tabs smartly.
+<img src=images/tabjumper.gif width="70%">
 
 ## Usage
 The following command shows the list of tabs.
@@ -47,9 +48,11 @@ let g:tabjumper_mod_func = 'Tab_info'
 
 Highlights
 - `TJSelect`  
-    Highlighting selected lines.
+    Highlighting selected lines.  
+    Linked to `PmenuSel` in default.
 - `TJSearch`  
-    Search pattern highlighting in TabJumper window.
+    Search pattern highlighting in TabJumper window.  
+    Linked to `Search` in default.
 
 ## License
 [MIT](https://github.com/MeF0504/vim-TabJumper/blob/main/LICENSE)
