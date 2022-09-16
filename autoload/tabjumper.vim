@@ -73,7 +73,7 @@ function! s:ctrl_win() abort
     let start_line = s:lines[s:cur_tab-1]
     call cursor(start_line)
     let sel_id = matchaddpos('TJSelect', start_line)
-    redraw!
+    redraw
     let srch = ''
     while 1
         let key = getcharstr()
@@ -122,7 +122,7 @@ function! s:ctrl_win() abort
         call matchdelete(sel_id)
         let cur = s:get_cur_tab()
         let sel_id = matchaddpos('TJSelect', s:lines[cur], 10)
-        redraw!
+        redraw
     endwhile
 endfunction
 
