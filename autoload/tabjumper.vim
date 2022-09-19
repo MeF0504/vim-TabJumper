@@ -181,7 +181,7 @@ function! tabjumper#jump() abort
                     let name = '[No name]'
                 endif
             endif
-            call add(res, printf('   %s%s', name, mod))
+            call add(res, printf('   └ %s%s', name, mod))
             call add(tmp, cnt)
             let cnt += 1
         endfor
