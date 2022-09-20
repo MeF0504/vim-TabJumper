@@ -47,6 +47,7 @@ function! s:set_win() abort
     setlocal report=9999
     setlocal nolist
     setlocal nonumber
+    setlocal filetype=TabJumper
     setlocal laststatus=2
     setlocal cmdheight=1
     setlocal statusline=\ \ move:j,k,↑,↓\ close:q,<ESC>\ search:/,n,N\ %=%{s:set_st_line()}
