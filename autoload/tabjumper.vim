@@ -75,6 +75,7 @@ function! s:ctrl_win() abort
     call cursor(start_line)
     let sel_id = matchaddpos('TJSelect', start_line)
     redraw
+    redrawstatus
     let srch = ''
     while 1
         let key = getcharstr()
@@ -128,6 +129,7 @@ function! s:ctrl_win() abort
         let cur = s:get_cur_tab()
         let sel_id = matchaddpos('TJSelect', s:lines[cur], 10)
         redraw
+        redrawstatus
     endwhile
 endfunction
 
