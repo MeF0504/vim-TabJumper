@@ -50,7 +50,7 @@ function! s:set_win() abort
     setlocal filetype=TabJumper
     setlocal laststatus=2
     setlocal cmdheight=1
-    setlocal statusline=\ \ move:j,k,↑,↓\ close:q,<ESC>\ search:/,n,N\ %=%{s:set_st_line()}
+    setlocal statusline=\ \ move:j,k,↑,↓,g,G\ close:q,<ESC>\ search:/,n,N\ %=%{s:set_st_line()}
     setlocal nocursorline
     setlocal nocursorcolumn
 
@@ -97,6 +97,10 @@ function! s:ctrl_win() abort
             if cur > 0
                 call cursor(s:lines[cur-1][0], 1)
             endif
+        elseif key ==# 'g'
+            call cursor(1, 1)
+        elseif key ==# 'G'
+            call cursor(s:lines[-1][0], 1)
         elseif key ==# '/'
             let s:search = input('/', '', 'buffer')
             if search_id != -1
