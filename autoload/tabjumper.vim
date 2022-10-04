@@ -14,6 +14,7 @@ function! s:set_config() abort
     let s:lines = []
     let s:search = ''
     let s:done = -1
+    let s:debug = get(g:, 'tabjumper_debug', 0)
 endfunction
 
 function! s:set_highlight() abort
@@ -72,7 +73,11 @@ endfunction
 function! s:ctrl_win() abort
     let search_id = -1
     let start_line = s:lines[s:cur_tab-1]
-    call cursor(start_line)
+    if s:debug
+        echo 'start line; '
+        echon start_line
+    endif
+    call cursor(start_line[0], 1)
     let sel_id = matchaddpos('TJSelect', start_line)
     redraw
     redrawstatus
