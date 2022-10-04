@@ -203,6 +203,8 @@ function! tabjumper#jump() abort
     redraw!
     call s:set_highlight()
     call s:ctrl_win()
-    " call s:close_win()
+    if s:done < 0
+        call s:close_win()
+    endif
     call s:jump_tab()
 endfunction
