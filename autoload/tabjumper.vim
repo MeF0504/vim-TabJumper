@@ -4,6 +4,12 @@ augroup TabJumper
     autocmd!
 augroup END
 
+function! tabjumper#log() abort
+    for l in s:log
+        echo l
+    endfor
+endfunction
+
 function! s:set_config() abort
     let s:height = get(g:, 'tabjumper_height', 10)
     let s:bufname = 'TabJumper'
@@ -13,8 +19,9 @@ function! s:set_config() abort
     let s:cur_tab = tabpagenr()
     let s:lines = []
     let s:search = ''
-    let s:done = -1
+    let s:done = []
     let s:debug = get(g:, 'tabjumper_debug', 0)
+    let s:log = []
 endfunction
 
 function! s:set_highlight() abort
@@ -24,7 +31,7 @@ endfunction
 
 function! s:set_st_line() abort
     let res = ''
-    let res .= s:get_cur_tab()+1
+    let res .= s:get_cur_tab(0)+1
     let res .= '/'
     let res .= len(s:lines)
     return res
@@ -51,20 +58,26 @@ function! s:set_win() abort
     setlocal filetype=TabJumper
     setlocal laststatus=2
     setlocal cmdheight=1
-    setlocal statusline=\ \ move:j,k,↑,↓,g,G\ close:q,<ESC>\ search:/,n,N\ %=%{s:set_st_line()}
+    setlocal statusline=\ \ move:j,k,g,G\ win-mode:h,l\ close:q,<ESC>\ search:/,n,N\ %=%{s:set_st_line()}
     setlocal nocursorline
     setlocal nocursorcolumn
 
     autocmd TabJumper WinLeave <buffer> ++once call s:close_win()
 endfunction
 
-function! s:get_cur_tab() abort
+function! s:get_cur_tab(win_mode) abort
     let ln = line('.')
     for i in range(len(s:lines))
+        let win = -1  " 0=tab numのため
         for j in s:lines[i]
             if ln == j
-                return i
+                if a:win_mode
+                    return [i, win]
+                else
+                    return i
+                endif
             endif
+            let win += 1
         endfor
     endfor
     return -1
@@ -74,14 +87,14 @@ function! s:ctrl_win() abort
     let search_id = -1
     let start_line = s:lines[s:cur_tab-1]
     if s:debug
-        echo 'start line; '
-        echon start_line
+        call add(s:log, 'start line; '.join(start_line))
     endif
     call cursor(start_line[0], 1)
     let sel_id = matchaddpos('TJSelect', start_line)
     redraw
     redrawstatus
     let srch = ''
+    let win_mode = 0
     while 1
         let key = getcharstr()
         if key ==# 'q'
@@ -91,22 +104,71 @@ function! s:ctrl_win() abort
         elseif key ==# "\<c-c>"  " don't work?
             break
         elseif key ==# "\<CR>"
-            let s:done = s:get_cur_tab()+1
+            if win_mode
+                let s:done = map(s:get_cur_tab(win_mode), 'v:val+1')
+            else
+                let tabnr = s:get_cur_tab(win_mode)+1
+                let s:done = [tabnr, tabpagewinnr(tabnr)]
+            endif
             break
         elseif key ==# 'j' || key ==# "\<Down>"
-            let cur = s:get_cur_tab()
-            if cur < len(s:lines)-1
-                call cursor(s:lines[cur+1][0], 1)
+            let cur = s:get_cur_tab(0)
+            if win_mode
+                let wins = s:lines[cur][1:]
+                if s:debug
+                    call add(s:log, printf('%d vs %d~%d',
+                                \ line('.'), wins[0], wins[-1]))
+                endif
+                if line('.') < wins[-1]
+                    cal cursor(line('.')+1, 1)
+                endif
+            else
+                if cur < len(s:lines)-1
+                    call cursor(s:lines[cur+1][0], 1)
+                endif
             endif
         elseif key ==# 'k' || key ==# "\<Up>"
-            let cur = s:get_cur_tab()
-            if cur > 0
-                call cursor(s:lines[cur-1][0], 1)
+            let cur = s:get_cur_tab(0)
+            if win_mode
+                let wins = s:lines[cur][1:]
+                if s:debug
+                    call add(s:log, printf('%d vs %d~%d',
+                                \ line('.'), wins[0], wins[-1]))
+                endif
+                if line('.') > wins[0]
+                    cal cursor(line('.')-1, 1)
+                endif
+            else
+                if cur > 0
+                    call cursor(s:lines[cur-1][0], 1)
+                endif
             endif
         elseif key ==# 'g'
-            call cursor(1, 1)
+            if win_mode
+                let cur = s:get_cur_tab(0)
+                call cursor(s:lines[cur][1], 1)
+            else
+                call cursor(1, 1)
+            endif
         elseif key ==# 'G'
-            call cursor(s:lines[-1][0], 1)
+            if win_mode
+                let cur = s:get_cur_tab(0)
+                call cursor(s:lines[cur][-1], 1)
+            else
+                call cursor(s:lines[-1][0], 1)
+            endif
+        elseif key ==# 'l' || key ==# "\<Right>"
+            if !win_mode
+                let cur = s:get_cur_tab(0)
+                let win_mode = 1
+                call cursor(s:lines[cur][1], 1)
+            endif
+        elseif key ==# 'h' || key ==# "\<Left>"
+            if win_mode
+                let cur = s:get_cur_tab(0)
+                let win_mode = 0
+                call cursor(s:lines[cur][0], 1)
+            endif
         elseif key ==# '/'
             let s:search = input('/', '', 'buffer')
             if search_id != -1
@@ -119,20 +181,32 @@ function! s:ctrl_win() abort
             call search(s:search)
         elseif key ==# 'n'
             if !empty(s:search)
-                let cur = s:get_cur_tab()
-                call cursor(s:lines[cur][-1], 100)
+                if win_mode
+                    call cursor(line('.'), 100)
+                else
+                    let cur = s:get_cur_tab(0)
+                    call cursor(s:lines[cur][-1], 100)
+                endif
                 call search(s:search)
             endif
         elseif key ==# 'N'
             if !empty(s:search)
-                let cur = s:get_cur_tab()
-                call cursor(s:lines[cur][0], 1)
+                if win_mode
+                    call cursor(line('.'), 1)
+                else
+                    let cur = s:get_cur_tab(0)
+                    call cursor(s:lines[cur][0], 1)
+                endif
                 call search(s:search, 'b')
             endif
         endif
         call matchdelete(sel_id)
-        let cur = s:get_cur_tab()
-        let sel_id = matchaddpos('TJSelect', s:lines[cur], 10)
+        if win_mode
+            let sel_id = matchaddpos('TJSelect', [[line('.'), 4, col('$')-4]], 10)
+        else
+            let cur = s:get_cur_tab(0)
+            let sel_id = matchaddpos('TJSelect', s:lines[cur], 10)
+        endif
         redraw
         redrawstatus
     endwhile
@@ -147,10 +221,14 @@ function! s:close_win() abort
 endfunction
 
 function! s:jump_tab() abort
-    if s:done < 0
+    if s:debug
+        call add(s:log, 'done: '.join(s:done))
+    endif
+    if empty(s:done)
         return
     endif
-    execute printf('%dtabnext', s:done)
+    execute printf('%dtabnext', s:done[0])
+    execute printf('%dwincmd w', s:done[1])
 endfunction
 
 function! tabjumper#jump() abort
@@ -208,8 +286,6 @@ function! tabjumper#jump() abort
     redraw!
     call s:set_highlight()
     call s:ctrl_win()
-    if s:done < 0
-        call s:close_win()
-    endif
+    call s:close_win()
     call s:jump_tab()
 endfunction
