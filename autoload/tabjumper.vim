@@ -262,7 +262,7 @@ endfunction
 function! s:show_preview() abort
     let [tabn, winn] = s:get_cur_tab(1)
     if winn < 0
-        let winn = 0
+        let winn = tabpagewinnr(tabn)-1
     endif
     if s:debug
         call add(s:log, printf('preview win %d - %d', tabn, winn))
