@@ -19,7 +19,12 @@ function! s:set_config() abort
     let s:cur_tab = tabpagenr()
     let s:lines = []
     let s:search = ''
+    let s:win_mode = 0
     let s:done = []
+    let s:pre_enable = get(g:, 'tabjumper_preview_enable', 1)
+    let s:pid = -1
+    let s:pre_w = get(g:, 'tabjumper_preview_width', 40)
+    let s:pre_h = get(g:, 'tabjumper_preview_height', 15)
     let s:debug = get(g:, 'tabjumper_debug', 0)
     let s:log = []
 endfunction
@@ -30,10 +35,20 @@ function! s:set_highlight() abort
 endfunction
 
 function! s:set_st_line() abort
-    let res = ''
+    let res = '  move:j,k,g,G close:q,<ESC> search:/,n,N '
+    if s:win_mode
+        let res .= 'tab-mode:h '
+    else
+        let res .= 'win-mode:l '
+    endif
+    if s:pre_enable
+        let res .= 'preview:p '
+    endif
+    let res .= '%='
     let res .= s:get_cur_tab(0)+1
     let res .= '/'
     let res .= len(s:lines)
+    let res .= ' '
     return res
 endfunction
 
@@ -58,20 +73,20 @@ function! s:set_win() abort
     setlocal filetype=TabJumper
     setlocal laststatus=2
     setlocal cmdheight=1
-    setlocal statusline=\ \ move:j,k,g,G\ win-mode:h,l\ close:q,<ESC>\ search:/,n,N\ %=%{s:set_st_line()}
+    setlocal statusline=%!s:set_st_line()
     setlocal nocursorline
     setlocal nocursorcolumn
 
     autocmd TabJumper WinLeave <buffer> ++once call s:close_win()
 endfunction
 
-function! s:get_cur_tab(win_mode) abort
+function! s:get_cur_tab(win) abort
     let ln = line('.')
     for i in range(len(s:lines))
         let win = -1  " 0=tab numのため
         for j in s:lines[i]
             if ln == j
-                if a:win_mode
+                if a:win
                     return [i, win]
                 else
                     return i
@@ -94,9 +109,11 @@ function! s:ctrl_win() abort
     redraw
     redrawstatus
     let srch = ''
-    let win_mode = 0
     while 1
         let key = getcharstr()
+        if s:pre_enable
+            call s:close_preview()
+        endif
         if key ==# 'q'
             break
         elseif key ==# "\<esc>"
@@ -104,16 +121,16 @@ function! s:ctrl_win() abort
         elseif key ==# "\<c-c>"  " don't work?
             break
         elseif key ==# "\<CR>"
-            if win_mode
-                let s:done = map(s:get_cur_tab(win_mode), 'v:val+1')
+            if s:win_mode
+                let s:done = map(s:get_cur_tab(s:win_mode), 'v:val+1')
             else
-                let tabnr = s:get_cur_tab(win_mode)+1
+                let tabnr = s:get_cur_tab(s:win_mode)+1
                 let s:done = [tabnr, tabpagewinnr(tabnr)]
             endif
             break
         elseif key ==# 'j' || key ==# "\<Down>"
             let cur = s:get_cur_tab(0)
-            if win_mode
+            if s:win_mode
                 let wins = s:lines[cur][1:]
                 if s:debug
                     call add(s:log, printf('%d vs %d~%d',
@@ -129,7 +146,7 @@ function! s:ctrl_win() abort
             endif
         elseif key ==# 'k' || key ==# "\<Up>"
             let cur = s:get_cur_tab(0)
-            if win_mode
+            if s:win_mode
                 let wins = s:lines[cur][1:]
                 if s:debug
                     call add(s:log, printf('%d vs %d~%d',
@@ -144,29 +161,29 @@ function! s:ctrl_win() abort
                 endif
             endif
         elseif key ==# 'g'
-            if win_mode
+            if s:win_mode
                 let cur = s:get_cur_tab(0)
                 call cursor(s:lines[cur][1], 1)
             else
                 call cursor(1, 1)
             endif
         elseif key ==# 'G'
-            if win_mode
+            if s:win_mode
                 let cur = s:get_cur_tab(0)
                 call cursor(s:lines[cur][-1], 1)
             else
                 call cursor(s:lines[-1][0], 1)
             endif
         elseif key ==# 'l' || key ==# "\<Right>"
-            if !win_mode
+            if !s:win_mode
                 let cur = s:get_cur_tab(0)
-                let win_mode = 1
+                let s:win_mode = 1
                 call cursor(s:lines[cur][1], 1)
             endif
         elseif key ==# 'h' || key ==# "\<Left>"
-            if win_mode
+            if s:win_mode
                 let cur = s:get_cur_tab(0)
-                let win_mode = 0
+                let s:win_mode = 0
                 call cursor(s:lines[cur][0], 1)
             endif
         elseif key ==# '/'
@@ -181,7 +198,7 @@ function! s:ctrl_win() abort
             call search(s:search)
         elseif key ==# 'n'
             if !empty(s:search)
-                if win_mode
+                if s:win_mode
                     call cursor(line('.'), 100)
                 else
                     let cur = s:get_cur_tab(0)
@@ -191,7 +208,7 @@ function! s:ctrl_win() abort
             endif
         elseif key ==# 'N'
             if !empty(s:search)
-                if win_mode
+                if s:win_mode
                     call cursor(line('.'), 1)
                 else
                     let cur = s:get_cur_tab(0)
@@ -199,9 +216,13 @@ function! s:ctrl_win() abort
                 endif
                 call search(s:search, 'b')
             endif
+        elseif key ==# 'p'
+            if s:pre_enable
+                call s:show_preview()
+            endif
         endif
         call matchdelete(sel_id)
-        if win_mode
+        if s:win_mode
             let sel_id = matchaddpos('TJSelect', [[line('.'), 4, col('$')-4]], 10)
         else
             let cur = s:get_cur_tab(0)
@@ -229,6 +250,58 @@ function! s:jump_tab() abort
     endif
     execute printf('%dtabnext', s:done[0])
     execute printf('%dwincmd w', s:done[1])
+endfunction
+
+function! s:set_preview(winid) abort
+    " setlocal nomodifiable
+    setlocal nonumber
+    call cursor(line('.', a:winid), 1)
+    normal! zz
+endfunction
+
+function! s:show_preview() abort
+    let [tabn, winn] = s:get_cur_tab(1)
+    if winn < 0
+        let winn = 0
+    endif
+    if s:debug
+        call add(s:log, printf('preview win %d - %d', tabn, winn))
+    endif
+    let bufn = tabpagebuflist(tabn+1)[winn]
+    let winid = win_getid(winn+1, tabn+1)
+    if has('popupwin')
+        let config = {
+                    \ 'line': 'cursor',
+                    \ 'col': strchars(getline('.'))+3,
+                    \ 'pos': 'botleft',
+                    \ 'maxwidth': s:pre_w,
+                    \ 'maxheight': s:pre_h,
+                    \ 'cursorline': v:true,
+                    \ }
+        let s:pid = popup_create(bufn, config)
+    elseif has('nvim')
+        let config = {
+                    \ 'relative': 'editor',
+                    \ 'row': &lines/2,
+                    \ 'col': strchars(getline('.'))+3,
+                    \ 'anchor': 'SW',
+                    \ 'width': s:pre_w,
+                    \ 'height': s:pre_h,
+                    \ }
+        let s:pid = nvim_open_win(bufn, v:false, config)
+    endif
+    call win_execute(s:pid, printf("call %sset_preview(%d)", expand('<SID>'), winid))
+endfunction
+
+function! s:close_preview() abort
+    if s:pid > 0
+        if has('popupwin')
+            call popup_close(s:pid)
+        elseif has('nvim')
+            call nvim_win_close(s:pid, v:false)
+        endif
+        let s:pid = -1
+    endif
 endfunction
 
 function! tabjumper#jump() abort

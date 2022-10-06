@@ -10,9 +10,14 @@ TabJump
 ```
 In this window,
 - select: j/k/↑/↓
+- go to the first line: g
+- go to the last line: G
 - jump: Enter
 - search: /
 - repeat the search: n/N
+- tab/win mode: h/l/←/→
+- preview: p
+- quit: q/<esc>
 
 ## Requirements
 
@@ -30,6 +35,15 @@ Variables
 - `g:tabjumper_height` (number)  
     the height of TabJumper window.  
     default: 10
+- `g:tabjumper_preview_enable` (bool)  
+    if set 1, preview is enable.  
+    default: 1
+- `g:tabjumper_preview_height` (number)  
+    the height of the preview window.  
+    default: 40
+- `g:tabjumper_preview_width` (number)  
+    the width of the preview window.  
+    default: 15
 - `g:tabjumper_mod_func` (string or funcref)  
     a funcref or function name.  
     This function shows the information of a file
