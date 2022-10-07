@@ -261,11 +261,17 @@ endfunction
 
 function! s:show_preview() abort
     let [tabn, winn] = s:get_cur_tab(1)
-    if winn < 0
-        let winn = tabpagewinnr(tabn)-1
+    if winn < 0  " tab mode
+        let winn = tabpagewinnr(tabn+1)-1
+    endif
+    let jumper_winn = winnr()-1
+    if !s:win_mode && winn == jumper_winn
+        let winn = tabpagewinnr(tabn+1, '#')-1
+    elseif winn >= jumper_winn
+        let winn += 1
     endif
     if s:debug
-        call add(s:log, printf('preview win %d - %d', tabn, winn))
+        call add(s:log, printf('preview win %d - %d (%d)', tabn, winn, jumper_winn))
     endif
     let bufn = tabpagebuflist(tabn+1)[winn]
     let winid = win_getid(winn+1, tabn+1)
