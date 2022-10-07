@@ -29,6 +29,76 @@ function! s:set_config() abort
     let s:log = []
 endfunction
 
+function! s:set_info() abort
+    let cnt = 1
+    let s:lines = []
+
+    for i in range(1, tabpagenr('$'))
+        let tmp = []
+        let info = {}
+        if i == s:cur_tab
+            let status = '>'
+        elseif i == s:last_tab
+            let status = '#'
+        else
+            let status = ' '
+        endif
+        let info.str = printf('%s tab %d:', status, i)
+        let info.line = cnt
+        let info.tabnr = i
+        let info.winnr = tabpagewinnr(i)
+        let info.bufnr = tabpagebuflist(i)[info.winnr-1]
+        let info.winid = win_getid(info.winnr, i)
+        call add(tmp, info)
+        let cnt += 1
+        for j in range(1, tabpagewinnr(i, '$'))
+            let info = {}
+            let bufnr = tabpagebuflist(i)[j-1]
+            if !empty(s:mod_func)
+                let mod = call(s:mod_func, [i, j])
+            else
+                let wid = win_getid(j, i)
+                let mod = ''
+                let mod .= getbufvar(bufnr, '&modified') ? ',+' : ''
+                let mod .= getbufvar(bufnr, '&modifiable') ? '' : ',-'
+                let mod .= getbufvar(bufnr, '&readonly') ? ',RO' : ''
+                if !empty(mod)
+                    let mod = printf(' (%s)', mod[1:])
+                endif
+                let mod .= printf(' %d/%d', line('.', wid), line('$', wid))
+            endif
+            let name = bufname(bufnr)
+            if empty(name)
+                if getbufvar(bufnr, '&filetype') == 'qf'
+                    let name = '[Quickfix]'
+                else
+                    let name = '[No name]'
+                endif
+            endif
+            let info.str = printf('   └ %s%s', name, mod)
+            let info.line = cnt
+            let info.bufnr = bufnr
+            let info.tabnr = i
+            let info.winnr = j
+            let info.winid = win_getid(j, i)
+            let info.name = name
+            call add(tmp, info)
+            let cnt += 1
+        endfor
+        call add(s:lines, tmp)
+    endfor
+endfunction
+
+function! s:get_lines() abort
+    let res = []
+    for wins in s:lines
+        for info in wins
+            call add(res, info.str)
+        endfor
+    endfor
+    return res
+endfunction
+
 function! s:set_highlight() abort
     highlight default link TJSelect PmenuSel
     highlight default link TJSearch Search
@@ -83,32 +153,35 @@ endfunction
 function! s:get_cur_tab(win) abort
     let ln = line('.')
     for i in range(len(s:lines))
-        let win = -1  " 0=tab numのため
-        for j in s:lines[i]
-            if ln == j
+        for info in s:lines[i]
+            if ln == info.line
                 if a:win
-                    return [i, win]
+                    return [i, info.winnr-1]
                 else
                     return i
                 endif
             endif
-            let win += 1
         endfor
     endfor
-    return -1
+    if a:win
+        return [-1, -1]
+    else
+        return -1
+    endif
 endfunction
 
 function! s:ctrl_win() abort
     let search_id = -1
-    let start_line = s:lines[s:cur_tab-1]
+    let start_lines = map(copy(s:lines[s:cur_tab-1]), 'v:val.line')
     if s:debug
-        call add(s:log, 'start line; '.join(start_line))
+        call add(s:log, 'start line; '.join(start_lines))
     endif
-    call cursor(start_line[0], 1)
-    let sel_id = matchaddpos('TJSelect', start_line)
+    call cursor(start_lines[0], 1)
+    let sel_id = matchaddpos('TJSelect', start_lines)
     redraw
     redrawstatus
     let srch = ''
+
     while 1
         let key = getcharstr()
         if s:pre_enable
@@ -121,17 +194,12 @@ function! s:ctrl_win() abort
         elseif key ==# "\<c-c>"  " don't work?
             break
         elseif key ==# "\<CR>"
-            if s:win_mode
-                let s:done = map(s:get_cur_tab(s:win_mode), 'v:val+1')
-            else
-                let tabnr = s:get_cur_tab(s:win_mode)+1
-                let s:done = [tabnr, tabpagewinnr(tabnr)]
-            endif
+            let s:done = map(s:get_cur_tab(1), 'v:val+1')
             break
         elseif key ==# 'j' || key ==# "\<Down>"
             let cur = s:get_cur_tab(0)
             if s:win_mode
-                let wins = s:lines[cur][1:]
+                let wins = map(copy(s:lines[cur]), 'v:val.line')[1:]
                 if s:debug
                     call add(s:log, printf('%d vs %d~%d',
                                 \ line('.'), wins[0], wins[-1]))
@@ -141,13 +209,13 @@ function! s:ctrl_win() abort
                 endif
             else
                 if cur < len(s:lines)-1
-                    call cursor(s:lines[cur+1][0], 1)
+                    call cursor(s:lines[cur+1][0].line, 1)
                 endif
             endif
         elseif key ==# 'k' || key ==# "\<Up>"
             let cur = s:get_cur_tab(0)
             if s:win_mode
-                let wins = s:lines[cur][1:]
+                let wins = map(copy(s:lines[cur]), 'v:val.line')[1:]
                 if s:debug
                     call add(s:log, printf('%d vs %d~%d',
                                 \ line('.'), wins[0], wins[-1]))
@@ -157,34 +225,34 @@ function! s:ctrl_win() abort
                 endif
             else
                 if cur > 0
-                    call cursor(s:lines[cur-1][0], 1)
+                    call cursor(s:lines[cur-1][0].line, 1)
                 endif
             endif
         elseif key ==# 'g'
             if s:win_mode
                 let cur = s:get_cur_tab(0)
-                call cursor(s:lines[cur][1], 1)
+                call cursor(s:lines[cur][1].line, 1)
             else
                 call cursor(1, 1)
             endif
         elseif key ==# 'G'
             if s:win_mode
                 let cur = s:get_cur_tab(0)
-                call cursor(s:lines[cur][-1], 1)
+                call cursor(s:lines[cur][-1].line, 1)
             else
-                call cursor(s:lines[-1][0], 1)
+                call cursor(s:lines[-1][0].line, 1)
             endif
         elseif key ==# 'l' || key ==# "\<Right>"
             if !s:win_mode
                 let cur = s:get_cur_tab(0)
                 let s:win_mode = 1
-                call cursor(s:lines[cur][1], 1)
+                call cursor(s:lines[cur][1].line, 1)
             endif
         elseif key ==# 'h' || key ==# "\<Left>"
             if s:win_mode
                 let cur = s:get_cur_tab(0)
                 let s:win_mode = 0
-                call cursor(s:lines[cur][0], 1)
+                call cursor(s:lines[cur][0].line, 1)
             endif
         elseif key ==# '/'
             let s:search = input('/', '', 'buffer')
@@ -202,7 +270,7 @@ function! s:ctrl_win() abort
                     call cursor(line('.'), 100)
                 else
                     let cur = s:get_cur_tab(0)
-                    call cursor(s:lines[cur][-1], 100)
+                    call cursor(s:lines[cur][-1].line, 100)
                 endif
                 call search(s:search)
             endif
@@ -212,7 +280,7 @@ function! s:ctrl_win() abort
                     call cursor(line('.'), 1)
                 else
                     let cur = s:get_cur_tab(0)
-                    call cursor(s:lines[cur][0], 1)
+                    call cursor(s:lines[cur][0].line, 1)
                 endif
                 call search(s:search, 'b')
             endif
@@ -226,7 +294,8 @@ function! s:ctrl_win() abort
             let sel_id = matchaddpos('TJSelect', [[line('.'), 4, col('$')-4]], 10)
         else
             let cur = s:get_cur_tab(0)
-            let sel_id = matchaddpos('TJSelect', s:lines[cur], 10)
+            let sel_id = matchaddpos('TJSelect',
+                        \ map(copy(s:lines[cur]), 'v:val.line'), 10)
         endif
         redraw
         redrawstatus
@@ -261,20 +330,12 @@ endfunction
 
 function! s:show_preview() abort
     let [tabn, winn] = s:get_cur_tab(1)
-    if winn < 0  " tab mode
-        let winn = tabpagewinnr(tabn+1)-1
-    endif
-    let jumper_winn = winnr()-1
-    if !s:win_mode && winn == jumper_winn
-        let winn = tabpagewinnr(tabn+1, '#')-1
-    elseif winn >= jumper_winn
-        let winn += 1
-    endif
+    let info = s:lines[tabn][winn+1]  " +1 ... tab line
     if s:debug
-        call add(s:log, printf('preview win %d - %d (%d)', tabn, winn, jumper_winn))
+        call add(s:log, printf('preview win %d - %d', tabn, winn))
     endif
-    let bufn = tabpagebuflist(tabn+1)[winn]
-    let winid = win_getid(winn+1, tabn+1)
+    let bufn = info.bufnr
+    let winid = info.winid
     if has('popupwin')
         let config = {
                     \ 'line': 'cursor',
@@ -312,50 +373,8 @@ endfunction
 
 function! tabjumper#jump() abort
     call s:set_config()
-    let res = []
-    let cnt = 1
-
-    for i in range(1, tabpagenr('$'))
-        let tmp = []
-        if i == s:cur_tab
-            let status = '>'
-        elseif i == s:last_tab
-            let status = '#'
-        else
-            let status = ' '
-        endif
-        call add(res, printf('%s tab %d:', status, i))
-        call add(tmp, cnt)
-        let cnt += 1
-        for j in range(1, tabpagewinnr(i, '$'))
-            let bufnr = tabpagebuflist(i)[j-1]
-            if !empty(s:mod_func)
-                let mod = call(s:mod_func, [i, j])
-            else
-                let wid = win_getid(j, i)
-                let mod = ''
-                let mod .= getbufvar(bufnr, '&modified') ? ',+' : ''
-                let mod .= getbufvar(bufnr, '&modifiable') ? '' : ',-'
-                let mod .= getbufvar(bufnr, '&readonly') ? ',RO' : ''
-                if !empty(mod)
-                    let mod = printf(' (%s)', mod[1:])
-                endif
-                let mod .= printf(' %d/%d', line('.', wid), line('$', wid))
-            endif
-            let name = bufname(bufnr)
-            if empty(name)
-                if getbufvar(bufnr, '&filetype') == 'qf'
-                    let name = '[Quickfix]'
-                else
-                    let name = '[No name]'
-                endif
-            endif
-            call add(res, printf('   └ %s%s', name, mod))
-            call add(tmp, cnt)
-            let cnt += 1
-        endfor
-        call add(s:lines, tmp)
-    endfor
+    call s:set_info()
+    let res = s:get_lines()
 
     execute printf('%s %dsplit %s', s:bottop, s:height, s:bufname)
     call s:set_win()
