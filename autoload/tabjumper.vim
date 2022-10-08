@@ -21,6 +21,7 @@ function! s:set_config() abort
     let s:search = ''
     let s:win_mode = 0
     let s:done = []
+    let s:tabmove = []
     let s:pre_enable = get(g:, 'tabjumper_preview_enable', 1)
     let s:pid = -1
     let s:pre_w = get(g:, 'tabjumper_preview_width', 40)
@@ -107,9 +108,9 @@ endfunction
 function! s:set_st_line() abort
     let res = '  move:j,k,g,G close:q,<ESC> search:/,n,N '
     if s:win_mode
-        let res .= 'tab-mode:h '
+        let res .= 'tab:h '
     else
-        let res .= 'win-mode:l '
+        let res .= 'win:l tabmove:+,- '
     endif
     if s:pre_enable
         let res .= 'preview:p '
@@ -288,6 +289,40 @@ function! s:ctrl_win() abort
             if s:pre_enable
                 call s:show_preview()
             endif
+        elseif key ==# '+' || key ==# '-'
+            if s:win_mode
+                continue
+            endif
+            let cur = s:get_cur_tab(0)
+            if key ==# '+' && s:lines[cur][0].tabnr == len(s:lines)
+                continue
+            elseif key ==# '-' && s:lines[cur][0].tabnr == 1
+                continue
+            endif
+            call add(s:tabmove, printf('%dtabdo tabmove %s', cur+1, key))
+            let tmp = remove(s:lines, cur)
+            if key ==# '+'
+                let new_cur = cur+1
+            else
+                let new_cur = cur-1
+            endif
+            call extend(s:lines, [tmp], new_cur)
+            let cnt = 1
+            for i in range(len(s:lines))
+                for info in s:lines[i]
+                    let info.line = cnt
+                    let info.tabnr = i+1
+                    let cnt += 1
+                endfor
+            endfor
+            let res = s:get_lines()
+            setlocal modifiable
+            silent %delete _
+            call append(0, res)
+            silent $delete _
+            setlocal nomodifiable
+            call cursor(s:lines[new_cur][0].line, 1)
+            " redraw!
         endif
         call matchdelete(sel_id)
         if s:win_mode
@@ -314,6 +349,12 @@ function! s:jump_tab() abort
     if s:debug
         call add(s:log, 'done: '.join(s:done))
     endif
+    for tm in s:tabmove
+        execute tm
+        if s:debug
+            call add(s:log, '  execute '..tm)
+        endif
+    endfor
     if empty(s:done)
         return
     endif

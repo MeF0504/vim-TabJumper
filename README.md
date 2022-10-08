@@ -1,7 +1,12 @@
 # vim-TabJumper
 
 Vim plugin to show and jump tabs smartly.
+
+tab jump  
 <img src=images/tabjumper.gif width="70%">
+
+tab move  
+<img src=images/tabjumper2.gif width="70%">
 
 ## Usage
 The following command shows the list of tabs.
@@ -17,7 +22,8 @@ In this window,
 - repeat the search: n/N
 - tab/win mode: h/l/←/→
 - preview: p
-- quit: q/<esc>
+- tab move: +/-
+- quit: q/\<esc>
 
 ## Requirements
 
