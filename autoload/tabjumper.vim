@@ -379,7 +379,7 @@ function! s:show_preview() abort
     let winid = info.winid
     if has('popupwin')
         let config = {
-                    \ 'line': 'cursor',
+                    \ 'line': 'cursor-1',
                     \ 'col': strchars(getline('.'))+3,
                     \ 'pos': 'botleft',
                     \ 'maxwidth': s:pre_w,
@@ -389,9 +389,9 @@ function! s:show_preview() abort
         let s:pid = popup_create(bufn, config)
     elseif has('nvim')
         let config = {
-                    \ 'relative': 'editor',
-                    \ 'row': &lines/2,
-                    \ 'col': strchars(getline('.'))+3,
+                    \ 'relative': 'cursor',
+                    \ 'row': 0,
+                    \ 'col': strchars(getline('.'))+2-getcurpos()[2],
                     \ 'anchor': 'SW',
                     \ 'width': s:pre_w,
                     \ 'height': s:pre_h,
