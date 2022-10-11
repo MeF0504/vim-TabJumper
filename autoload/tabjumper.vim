@@ -22,11 +22,13 @@ function! s:set_config() abort
     let s:win_mode = 0
     let s:done = []
     let s:tabmove = []
-    let s:pre_enable = get(g:, 'tabjumper_preview_enable', 1)
+    let s:pre_enable = get(g:, 'tabjumper_preview_enable', 'auto')
     let s:pid = -1
     let s:pre_w = get(g:, 'tabjumper_preview_width', 40)
     let s:pre_h = get(g:, 'tabjumper_preview_height', 15)
     let s:debug = get(g:, 'tabjumper_debug', 0)
+    let s:tid = -1
+    let s:t_time = get(g:, 'tabjumper_preview_time', 1000)
     let s:log = []
 endfunction
 
@@ -112,7 +114,7 @@ function! s:set_st_line() abort
     else
         let res .= 'win:l tabmove:+,- '
     endif
-    if s:pre_enable
+    if s:pre_enable == 'manual'
         let res .= 'preview:p '
     endif
     let res .= '%='
@@ -185,8 +187,11 @@ function! s:ctrl_win() abort
 
     while 1
         let key = getcharstr()
-        if s:pre_enable
+        if s:pre_enable == 'auto' || s:pre_enable == 'manual'
             call s:close_preview()
+        endif
+        if s:pre_enable == 'auto'
+            call s:stop_timer()
         endif
         if key ==# 'q'
             break
@@ -213,6 +218,7 @@ function! s:ctrl_win() abort
                     call cursor(s:lines[cur+1][0].line, 1)
                 endif
             endif
+            call s:set_timer()
         elseif key ==# 'k' || key ==# "\<Up>"
             let cur = s:get_cur_tab(0)
             if s:win_mode
@@ -229,6 +235,7 @@ function! s:ctrl_win() abort
                     call cursor(s:lines[cur-1][0].line, 1)
                 endif
             endif
+            call s:set_timer()
         elseif key ==# 'g'
             if s:win_mode
                 let cur = s:get_cur_tab(0)
@@ -236,6 +243,7 @@ function! s:ctrl_win() abort
             else
                 call cursor(1, 1)
             endif
+            call s:set_timer()
         elseif key ==# 'G'
             if s:win_mode
                 let cur = s:get_cur_tab(0)
@@ -243,18 +251,21 @@ function! s:ctrl_win() abort
             else
                 call cursor(s:lines[-1][0].line, 1)
             endif
+            call s:set_timer()
         elseif key ==# 'l' || key ==# "\<Right>"
             if !s:win_mode
                 let cur = s:get_cur_tab(0)
                 let s:win_mode = 1
                 call cursor(s:lines[cur][1].line, 1)
             endif
+            call s:set_timer()
         elseif key ==# 'h' || key ==# "\<Left>"
             if s:win_mode
                 let cur = s:get_cur_tab(0)
                 let s:win_mode = 0
                 call cursor(s:lines[cur][0].line, 1)
             endif
+            call s:set_timer()
         elseif key ==# '/'
             let s:search = input('/', '', 'buffer')
             if search_id != -1
@@ -265,6 +276,7 @@ function! s:ctrl_win() abort
                 let search_id = matchadd('TJSearch', s:search, 15)
             endif
             call search(s:search)
+            call s:set_timer()
         elseif key ==# 'n'
             if !empty(s:search)
                 if s:win_mode
@@ -275,6 +287,7 @@ function! s:ctrl_win() abort
                 endif
                 call search(s:search)
             endif
+            call s:set_timer()
         elseif key ==# 'N'
             if !empty(s:search)
                 if s:win_mode
@@ -285,9 +298,10 @@ function! s:ctrl_win() abort
                 endif
                 call search(s:search, 'b')
             endif
+            call s:set_timer()
         elseif key ==# 'p'
-            if s:pre_enable
-                call s:show_preview()
+            if s:pre_enable == 'manual'
+                call s:show_preview(0)
             endif
         elseif key ==# '+' || key ==# '-'
             if s:win_mode
@@ -323,6 +337,7 @@ function! s:ctrl_win() abort
             setlocal nomodifiable
             call cursor(s:lines[new_cur][0].line, 1)
             " redraw!
+            call s:set_timer()
         endif
         call matchdelete(sel_id)
         if s:win_mode
@@ -369,7 +384,8 @@ function! s:set_preview(winid) abort
     normal! zz
 endfunction
 
-function! s:show_preview() abort
+function! s:show_preview(tid) abort
+    call s:close_preview()
     let [tabn, winn] = s:get_cur_tab(1)
     let info = s:lines[tabn][winn+1]  " +1 ... tab line
     if s:debug
@@ -399,6 +415,7 @@ function! s:show_preview() abort
         let s:pid = nvim_open_win(bufn, v:false, config)
     endif
     call win_execute(s:pid, printf("call %sset_preview(%d)", expand('<SID>'), winid))
+    redraw
 endfunction
 
 function! s:close_preview() abort
@@ -409,6 +426,20 @@ function! s:close_preview() abort
             call nvim_win_close(s:pid, v:false)
         endif
         let s:pid = -1
+    endif
+endfunction
+
+function! s:stop_timer() abort
+    if s:tid > 0
+        call timer_stop(s:tid)
+        let s:tid = -1
+    endif
+endfunction
+
+function! s:set_timer() abort
+    if s:pre_enable == 'auto'
+        call s:stop_timer()
+        let s:tid = timer_start(s:t_time, ('<SID>')..'show_preview', {'repeat': 1})
     endif
 endfunction
 

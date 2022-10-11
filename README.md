@@ -41,9 +41,16 @@ Variables
 - `g:tabjumper_height` (number)  
     the height of TabJumper window.  
     default: 10
-- `g:tabjumper_preview_enable` (bool)  
-    if set 1, preview is enable.  
-    default: 1
+- `g:tabjumper_preview_enable` (string)  
+    set the preview mode.  
+    If this option is set to 'auto', a preview is shown automatically.  
+    If this option is set to 'manual', a preview is shown when you put 'p' key.  
+    Otherwise, a preview is off.
+    default: 'auto'
+- `g:tabjumper_preview_time` (number)  
+    the waiting time until the preview is shown.
+    The unit is milliseconds.  
+    This option is effective when `g:tabjumper_preview_enable = 'auto'`.
 - `g:tabjumper_preview_height` (number)  
     the height of the preview window.  
     default: 40
