@@ -268,10 +268,10 @@ function! s:ctrl_win() abort
         elseif key ==# 'n'
             if !empty(s:search)
                 if s:win_mode
-                    call cursor(line('.'), 100)
+                    call cursor(line('.'), col('$'))
                 else
                     let cur = s:get_cur_tab(0)
-                    call cursor(s:lines[cur][-1].line, 100)
+                    call cursor(s:lines[cur][-1].line, col('$'))
                 endif
                 call search(s:search)
             endif
