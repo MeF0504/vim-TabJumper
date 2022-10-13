@@ -184,6 +184,7 @@ function! s:ctrl_win() abort
     redraw
     redrawstatus
     let srch = ''
+    call s:set_timer()
 
     while 1
         let key = getcharstr()
@@ -416,6 +417,7 @@ function! s:close_preview() abort
             call nvim_win_close(s:pid, v:false)
         endif
         let s:pid = -1
+        redraw
     endif
 endfunction
 
