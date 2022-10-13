@@ -55,6 +55,9 @@ function! s:set_info() abort
         call add(tmp, info)
         let cnt += 1
         for j in range(1, tabpagewinnr(i, '$'))
+            if s:is_popup(i, j)
+                continue
+            endif
             let info = {}
             let bufnr = tabpagebuflist(i)[j-1]
             if !empty(s:mod_func)
@@ -366,6 +369,21 @@ function! s:jump_tab() abort
     endif
     execute printf('%dtabnext', s:done[0])
     execute printf('%dwincmd w', s:done[1])
+endfunction
+
+function! s:is_popup(tabnr, winnr) abort
+    let wid = win_getid(a:winnr, a:tabnr)
+    if has('popupwin')
+        if match(popup_list(), wid) != -1
+            return v:true
+        endif
+    elseif has('nvim')
+        if (match(nvim_list_wins(), wid)!=-1) &&
+                    \ !empty(nvim_win_get_config(wid)['relative'])
+            return v:true
+        endif
+    endif
+    return v:false
 endfunction
 
 function! s:set_preview(winid) abort
