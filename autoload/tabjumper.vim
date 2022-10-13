@@ -187,12 +187,9 @@ function! s:ctrl_win() abort
 
     while 1
         let key = getcharstr()
-        if s:pre_enable == 'auto' || s:pre_enable == 'manual'
-            call s:close_preview()
-        endif
-        if s:pre_enable == 'auto'
-            call s:stop_timer()
-        endif
+        call s:close_preview()
+        call s:stop_timer()
+        call s:set_timer()
         if key ==# 'q'
             break
         elseif key ==# "\<esc>"
@@ -218,7 +215,6 @@ function! s:ctrl_win() abort
                     call cursor(s:lines[cur+1][0].line, 1)
                 endif
             endif
-            call s:set_timer()
         elseif key ==# 'k' || key ==# "\<Up>"
             let cur = s:get_cur_tab(0)
             if s:win_mode
@@ -235,7 +231,6 @@ function! s:ctrl_win() abort
                     call cursor(s:lines[cur-1][0].line, 1)
                 endif
             endif
-            call s:set_timer()
         elseif key ==# 'g'
             if s:win_mode
                 let cur = s:get_cur_tab(0)
@@ -243,7 +238,6 @@ function! s:ctrl_win() abort
             else
                 call cursor(1, 1)
             endif
-            call s:set_timer()
         elseif key ==# 'G'
             if s:win_mode
                 let cur = s:get_cur_tab(0)
@@ -251,22 +245,20 @@ function! s:ctrl_win() abort
             else
                 call cursor(s:lines[-1][0].line, 1)
             endif
-            call s:set_timer()
         elseif key ==# 'l' || key ==# "\<Right>"
             if !s:win_mode
                 let cur = s:get_cur_tab(0)
                 let s:win_mode = 1
                 call cursor(s:lines[cur][1].line, 1)
             endif
-            call s:set_timer()
         elseif key ==# 'h' || key ==# "\<Left>"
             if s:win_mode
                 let cur = s:get_cur_tab(0)
                 let s:win_mode = 0
                 call cursor(s:lines[cur][0].line, 1)
             endif
-            call s:set_timer()
         elseif key ==# '/'
+            call s:stop_timer()
             let s:search = input('/', '', 'buffer')
             if search_id != -1
                 call matchdelete(search_id)
@@ -287,7 +279,6 @@ function! s:ctrl_win() abort
                 endif
                 call search(s:search)
             endif
-            call s:set_timer()
         elseif key ==# 'N'
             if !empty(s:search)
                 if s:win_mode
@@ -298,7 +289,6 @@ function! s:ctrl_win() abort
                 endif
                 call search(s:search, 'b')
             endif
-            call s:set_timer()
         elseif key ==# 'p'
             if s:pre_enable == 'manual'
                 call s:show_preview(0)
@@ -337,7 +327,6 @@ function! s:ctrl_win() abort
             setlocal nomodifiable
             call cursor(s:lines[new_cur][0].line, 1)
             " redraw!
-            call s:set_timer()
         endif
         call matchdelete(sel_id)
         if s:win_mode
@@ -350,6 +339,7 @@ function! s:ctrl_win() abort
         redraw
         redrawstatus
     endwhile
+    call s:stop_timer()
 endfunction
 
 function! s:close_win() abort
