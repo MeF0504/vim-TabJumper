@@ -389,7 +389,8 @@ endfunction
 function! s:set_preview(winid) abort
     " setlocal nomodifiable
     setlocal nonumber
-    call cursor(line('.', a:winid), 1)
+    setlocal nowrap
+    call cursor(getcurpos(a:winid)[1:])
     normal! zz
 endfunction
 
