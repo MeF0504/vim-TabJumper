@@ -404,6 +404,9 @@ function! s:show_preview(tid) abort
     let bufn = info.bufnr
     let winid = info.winid
     if has('popupwin')
+        if match(term_list(), bufn) != -1
+            return
+        endif
         let config = {
                     \ 'line': 'cursor-1',
                     \ 'col': strchars(getline('.'))+3,
