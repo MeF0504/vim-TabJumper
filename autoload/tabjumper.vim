@@ -403,6 +403,9 @@ function! s:show_preview(tid) abort
     endif
     let bufn = info.bufnr
     let winid = info.winid
+    if s:debug
+        call add(s:log, printf('preview bn:%d wid:%d', bufn, winid))
+    endif
     if has('popupwin')
         if match(term_list(), bufn) != -1
             return
