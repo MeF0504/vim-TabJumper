@@ -194,15 +194,19 @@ function! s:ctrl_win() abort
     call s:set_timer()
 
     while 1
-        let key = getcharstr()
+        try
+            let key = getcharstr()
+        catch /^Vim:Interrupt$/
+            " ctrl-c (interrupt)
+            call s:close_preview()
+            break
+        endtry
         call s:close_preview()
         call s:stop_timer()
         call s:set_timer()
         if key ==# 'q'
             break
         elseif key ==# "\<esc>"
-            break
-        elseif key ==# "\<c-c>"  " don't work?
             break
         elseif key ==# "\<CR>"
             let s:done = map(s:get_cur_tab(1), 'v:val+1')
@@ -211,7 +215,7 @@ function! s:ctrl_win() abort
             let cur = s:get_cur_tab(0)
             if s:win_mode
                 let wins = map(copy(s:lines[cur]), 'v:val.line')[1:]
-                call s:debug_log(printf('%d vs %d~%d',
+                call s:debug_log(printf('j; %d vs %d~%d',
                             \ line('.'), wins[0], wins[-1]))
                 if line('.') < wins[-1]
                     cal cursor(line('.')+1, 1)
@@ -225,7 +229,7 @@ function! s:ctrl_win() abort
             let cur = s:get_cur_tab(0)
             if s:win_mode
                 let wins = map(copy(s:lines[cur]), 'v:val.line')[1:]
-                call s:debug_log(printf('%d vs %d~%d',
+                call s:debug_log(printf('k; %d vs %d~%d',
                             \ line('.'), wins[0], wins[-1]))
                 if line('.') > wins[0]
                     cal cursor(line('.')-1, 1)
@@ -400,6 +404,7 @@ function! s:show_preview(tid) abort
     call s:debug_log(printf('preview bn:%d wid:%d', bufn, winid))
     if has('popupwin')
         if match(term_list(), bufn) != -1
+            call s:debug_log('buf find in term_list: '..bugnr)
             return
         endif
         let config = {
