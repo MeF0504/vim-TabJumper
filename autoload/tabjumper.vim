@@ -32,6 +32,12 @@ function! s:set_config() abort
     let s:log = []
 endfunction
 
+function! s:debug_log(log) abort
+    if s:debug
+        cal add(s:log, a:log)
+    endif
+endfunction
+
 function! s:set_info() abort
     let cnt = 1
     let s:lines = []
@@ -179,9 +185,7 @@ endfunction
 function! s:ctrl_win() abort
     let search_id = -1
     let start_lines = map(copy(s:lines[s:cur_tab-1]), 'v:val.line')
-    if s:debug
-        call add(s:log, 'start line; '.join(start_lines))
-    endif
+    call s:debug_log('start line; '.join(start_lines))
     call cursor(start_lines[0], 1)
     let sel_id = matchaddpos('TJSelect', start_lines)
     redraw
@@ -207,10 +211,8 @@ function! s:ctrl_win() abort
             let cur = s:get_cur_tab(0)
             if s:win_mode
                 let wins = map(copy(s:lines[cur]), 'v:val.line')[1:]
-                if s:debug
-                    call add(s:log, printf('%d vs %d~%d',
-                                \ line('.'), wins[0], wins[-1]))
-                endif
+                call s:debug_log(printf('%d vs %d~%d',
+                            \ line('.'), wins[0], wins[-1]))
                 if line('.') < wins[-1]
                     cal cursor(line('.')+1, 1)
                 endif
@@ -223,10 +225,8 @@ function! s:ctrl_win() abort
             let cur = s:get_cur_tab(0)
             if s:win_mode
                 let wins = map(copy(s:lines[cur]), 'v:val.line')[1:]
-                if s:debug
-                    call add(s:log, printf('%d vs %d~%d',
-                                \ line('.'), wins[0], wins[-1]))
-                endif
+                call s:debug_log(printf('%d vs %d~%d',
+                            \ line('.'), wins[0], wins[-1]))
                 if line('.') > wins[0]
                     cal cursor(line('.')-1, 1)
                 endif
@@ -355,14 +355,10 @@ function! s:close_win() abort
 endfunction
 
 function! s:jump_tab() abort
-    if s:debug
-        call add(s:log, 'done: '.join(s:done))
-    endif
+    call s:debug_log('done: '.join(s:done))
     for tm in s:tabmove
         execute tm
-        if s:debug
-            call add(s:log, '  execute '..tm)
-        endif
+        call s:debug_log('  execute '..tm)
     endfor
     if empty(s:done)
         return
@@ -398,14 +394,10 @@ function! s:show_preview(tid) abort
     call s:close_preview()
     let [tabn, winn] = s:get_cur_tab(1)
     let info = s:lines[tabn][winn+1]  " +1 ... tab line
-    if s:debug
-        call add(s:log, printf('preview win %d - %d', tabn, winn))
-    endif
+    call s:debug_log(printf('preview win %d - %d', tabn, winn))
     let bufn = info.bufnr
     let winid = info.winid
-    if s:debug
-        call add(s:log, printf('preview bn:%d wid:%d', bufn, winid))
-    endif
+    call s:debug_log(printf('preview bn:%d wid:%d', bufn, winid))
     if has('popupwin')
         if match(term_list(), bufn) != -1
             return
@@ -436,6 +428,7 @@ endfunction
 
 function! s:close_preview() abort
     if s:pid > 0
+        call s:debug_log(printf('close win %d', s:pid))
         if has('popupwin')
             call popup_close(s:pid)
         elseif has('nvim')
