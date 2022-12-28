@@ -121,7 +121,7 @@ function! s:set_st_line() abort
     if s:win_mode
         let res .= 'tab:h '
     else
-        let res .= 'win:l tabmove:+,- '
+        let res .= 'pre:# win:l tabmove:+,- '
     endif
     if s:pre_enable == 'manual'
         let res .= 'preview:p '
@@ -264,6 +264,10 @@ function! s:ctrl_win() abort
                 let cur = s:get_cur_tab(0)
                 let s:win_mode = 0
                 call cursor(s:lines[cur][0].line, 1)
+            endif
+        elseif key ==# '#'
+            if !s:win_mode
+                call cursor(s:lines[s:last_tab-1][0].line, 1)
             endif
         elseif key ==# '/'
             call s:stop_timer()
