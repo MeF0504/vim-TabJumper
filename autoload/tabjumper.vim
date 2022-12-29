@@ -46,13 +46,13 @@ function! s:set_info() abort
         let tmp = []
         let info = {}
         if i == s:cur_tab
-            let status = '>'
+            let info.status = '>'
         elseif i == s:last_tab
-            let status = '#'
+            let info.status = '#'
         else
-            let status = ' '
+            let info.status = ' '
         endif
-        let info.str = printf('%s tab %d:', status, i)
+        let info.str = printf('%s tab %d:', info.status, i)
         let info.line = cnt
         let info.tabnr = i
         let info.winnr = tabpagewinnr(i)
@@ -267,7 +267,12 @@ function! s:ctrl_win() abort
             endif
         elseif key ==# '#'
             if !s:win_mode
-                call cursor(s:lines[s:last_tab-1][0].line, 1)
+                for ln in s:lines
+                    if ln[0].status ==# '#'
+                        call cursor(ln[0].line, 1)
+                        break
+                    endif
+                endfor
             endif
         elseif key ==# '/'
             call s:stop_timer()
@@ -407,7 +412,7 @@ function! s:show_preview(tid) abort
     let winid = info.winid
     call s:debug_log(printf('preview bn:%d wid:%d', bufn, winid))
     if has('popupwin')
-        if match(term_list(), bufn) != -1
+        if match(term_list(), printf('^%d$',bufn)) != -1
             call s:debug_log('buf find in term_list: '..bufn)
             return
         endif
