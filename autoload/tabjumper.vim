@@ -408,7 +408,7 @@ function! s:show_preview(tid) abort
     call s:debug_log(printf('preview bn:%d wid:%d', bufn, winid))
     if has('popupwin')
         if match(term_list(), bufn) != -1
-            call s:debug_log('buf find in term_list: '..bugnr)
+            call s:debug_log('buf find in term_list: '..bufn)
             return
         endif
         let config = {
