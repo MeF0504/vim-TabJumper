@@ -8,8 +8,12 @@ function! tabjumper#log() abort
     for l in s:log
         echo l
     endfor
+
+    echo 'bookmarks: '
+    echon s:bookmarks
 endfunction
 
+let s:bookmarks = {}
 function! s:set_config() abort
     let s:height = get(g:, 'tabjumper_height', 10)
     let s:bufname = 'TabJumper'
@@ -52,10 +56,20 @@ function! s:set_info() abort
         else
             let info.status = ' '
         endif
-        let info.str = printf('%s tab %d:', info.status, i)
+        let winnr = tabpagewinnr(i)
+        let mark = info.status
+        for j in range(1, tabpagewinnr(i, '$'))
+            let winid = win_getid(j, i)
+            let idx = match(keys(s:bookmarks), winid)
+            if idx != -1
+                let mark = s:bookmarks[winid]
+            endif
+        endfor
+
+        let info.str = printf('%s tab %d:', mark, i)
         let info.line = cnt
         let info.tabnr = i
-        let info.winnr = tabpagewinnr(i)
+        let info.winnr = winnr
         let info.bufnr = tabpagebuflist(i)[info.winnr-1]
         let info.winid = win_getid(info.winnr, i)
         call add(tmp, info)
@@ -117,7 +131,7 @@ function! s:set_highlight() abort
 endfunction
 
 function! s:set_st_line() abort
-    let res = '  move:j,k,g,G close:q,<ESC> search:/,n,N '
+    let res = '  move:j,k,g,G close:q search:/,n,N '
     if s:win_mode
         let res .= 'tab:h '
     else
@@ -126,6 +140,7 @@ function! s:set_st_line() abort
     if s:pre_enable == 'manual'
         let res .= 'preview:p '
     endif
+    let res .= 'bookmark:b '
     let res .= '%='
     let res .= s:get_cur_tab(0)+1
     let res .= '/'
@@ -160,6 +175,15 @@ function! s:set_win() abort
     setlocal nocursorcolumn
 
     autocmd TabJumper WinLeave <buffer> ++once call s:close_win()
+endfunction
+
+function! s:rewrite_win() abort
+    let res = s:get_lines()
+    setlocal modifiable
+    silent %delete _
+    call append(0, res)
+    silent $delete _
+    setlocal nomodifiable
 endfunction
 
 function! s:get_cur_tab(win) abort
@@ -336,14 +360,24 @@ function! s:ctrl_win() abort
                     let cnt += 1
                 endfor
             endfor
-            let res = s:get_lines()
-            setlocal modifiable
-            silent %delete _
-            call append(0, res)
-            silent $delete _
-            setlocal nomodifiable
+            call s:rewrite_win()
             call cursor(s:lines[new_cur][0].line, 1)
             " redraw!
+        elseif key ==# 'b'
+            call s:stop_timer()
+            call s:debug_log('bookmark')
+            let mark = input('bookmark (a-zA-Z): ')
+            if mark =~# '^[a-zA-Z]$'
+                let cur = s:get_cur_tab(0)
+                let tabnr = s:lines[cur][0].tabnr
+                let winid = s:lines[cur][0].winid
+                let s:bookmarks[winid] = mark
+                let s:lines[cur][0].str = printf('%s tab %d:', mark, tabnr)
+                call s:rewrite_win()
+                call cursor(s:lines[cur][0].line, 1)
+                call s:debug_log(printf('set %d = %s', winid, mark))
+            endif
+            call s:set_timer()
         endif
         call matchdelete(sel_id)
         if s:win_mode
