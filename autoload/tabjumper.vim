@@ -21,6 +21,8 @@ function! s:set_config() abort
     let s:mod_func = get(g:, 'tabjumper_mod_func', '')
     let s:last_tab = tabpagenr('#')
     let s:cur_tab = tabpagenr()
+    " tabjumper がwinnr最大以外だとずれるかも
+    let s:cur_winnr = winnr()
     let s:lines = []
     let s:search = ''
     let s:win_mode = 0
@@ -399,6 +401,7 @@ function! s:close_win() abort
     if bufname() == s:bufname
         quit
     endif
+    execute s:cur_winnr..'wincmd w'
 endfunction
 
 function! s:jump_tab() abort
