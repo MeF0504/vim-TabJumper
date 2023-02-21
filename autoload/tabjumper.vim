@@ -133,7 +133,13 @@ function! s:set_highlight() abort
 endfunction
 
 function! s:set_st_line() abort
-    let res = '  move:j,k,g,G close:q search:/,n,N '
+    let res = '  move:j,k,g,G'
+    if s:win_mode
+        let res .= ' '
+    else
+        let res .= ',[1-9] '
+    endif
+    let res .= 'close:q search:/,n,N '
     if s:win_mode
         let res .= 'tab:h '
     else
@@ -278,6 +284,12 @@ function! s:ctrl_win() abort
                 call cursor(s:lines[cur][-1].line, 1)
             else
                 call cursor(s:lines[-1][0].line, 1)
+            endif
+        elseif key =~# '[1-9]'
+            if !s:win_mode
+                if key <= len(s:lines)
+                    call cursor(s:lines[key-1][0].line, 1)
+                endif
             endif
         elseif key ==# 'l' || key ==# "\<Right>"
             if !s:win_mode
