@@ -255,6 +255,9 @@ function! s:ctrl_win() abort
             else
                 if cur < len(s:lines)-1
                     call cursor(s:lines[cur+1][0].line, 1)
+                    if line('w$') < s:lines[cur+1][-1].line
+                        execute printf("normal! %dzb", s:lines[cur+1][-1].line)
+                    endif
                 endif
             endif
         elseif key ==# 'k' || key ==# "\<Up>"
