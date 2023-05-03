@@ -1,0 +1,16 @@
+*TabJumper.txt* Vim plugin to show and jump tabs smartly.
+
+==============================================================================
+CONTENTS                                                    *TabJumper-contents*
+
+Introduction    |TabJumper-introduction|
+License        |TabJumper-license|
+
+==============================================================================
+INTRODUCTION                                            *TabJumper-introduction*
+
+==============================================================================
+LICENSE                                                      *TabJumper-license*
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:noet:fen:fdl=0:
