@@ -388,14 +388,14 @@ function! s:ctrl_win() abort
                 let cur = s:get_cur_tab(0)
                 let tabnr = s:lines[cur][0].tabnr
                 let winid = s:lines[cur][0].winid
-                for [key, val] in items(s:bookmarks)
-                    " remove duplicated marks?
-                    " if val ==# mark
-                    "     call remove(s:bookmarks, key)
-                    "     call s:update_mark(key)
-                    "     call s:debug_log(printf('bookmark overwrap %d=%s', winid, mark))
-                    " endif
-                endfor
+                " remove duplicated marks?
+                " for [key, val] in items(s:bookmarks)
+                "     if val ==# mark
+                "         call remove(s:bookmarks, key)
+                "         call s:update_mark(key)
+                "         call s:debug_log(printf('bookmark overwrap %d=%s', winid, mark))
+                "     endif
+                " endfor
                 let s:bookmarks[winid] = mark
                 call s:update_mark(winid)
                 call s:rewrite_win()
