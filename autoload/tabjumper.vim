@@ -383,16 +383,34 @@ function! s:ctrl_win() abort
         elseif key ==# 'b'
             call s:stop_timer()
             call s:debug_log('bookmark')
-            let mark = input('bookmark (a-zA-Z): ')
+            let mark = input('bookmark (a-zA-Z)/clear: ')
             if mark =~# '^[a-zA-Z]$'
                 let cur = s:get_cur_tab(0)
                 let tabnr = s:lines[cur][0].tabnr
                 let winid = s:lines[cur][0].winid
+                " remove duplicated marks?
+                " for [key, val] in items(s:bookmarks)
+                "     if val ==# mark
+                "         call remove(s:bookmarks, key)
+                "         call s:update_mark(key)
+                "         call s:debug_log(printf('bookmark overwrap %d=%s', winid, mark))
+                "     endif
+                " endfor
                 let s:bookmarks[winid] = mark
-                let s:lines[cur][0].str = printf('%s tab %d:', mark, tabnr)
+                call s:update_mark(winid)
                 call s:rewrite_win()
                 call cursor(s:lines[cur][0].line, 1)
                 call s:debug_log(printf('set %d = %s', winid, mark))
+            elseif mark == 'clear'
+                let cur = s:get_cur_tab(0)
+                let winid = s:lines[cur][0].winid
+                if match(keys(s:bookmarks), winid) != -1
+                    call remove(s:bookmarks, winid)
+                    call s:update_mark(winid)
+                    call s:rewrite_win()
+                    call cursor(s:lines[cur][0].line, 1)
+                    call s:debug_log(printf('bookmark clear %d', winid))
+                endif
             endif
             call s:set_timer()
         endif
@@ -445,6 +463,28 @@ function! s:is_popup(tabnr, winnr) abort
         endif
     endif
     return v:false
+endfunction
+
+function! s:update_mark(winid) abort
+    for i in range(len(s:lines))
+        let mark = ''
+        let update = v:false
+        for j in range(1, len(s:lines[i])-1)
+            let info = s:lines[i][j]
+            if match(keys(s:bookmarks), info.winid) != -1
+                let mark = s:bookmarks[info.winid]
+            endif
+            if info.winid == a:winid
+                let update = v:true
+            endif
+        endfor
+        if update
+            if empty(mark)
+                let mark = s:lines[i][0].status
+            endif
+            let s:lines[i][0].str = printf('%s tab %d:', mark, i+1)
+        endif
+    endfor
 endfunction
 
 function! s:set_preview(winid) abort
