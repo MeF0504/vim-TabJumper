@@ -134,13 +134,16 @@ function! s:set_highlight() abort
 endfunction
 
 function! s:set_st_line() abort
-    let res = '  move:j,k,g,G'
+    let res = '  '
+    let res .= '?:help '
+    let res .= 'move:j,k,g,G'
     if s:win_mode
         let res .= ' '
     else
         let res .= ',[1-9] '
     endif
     let res .= 'close:q search:/,n,N '
+    let res .= '%<'
     if s:win_mode
         let res .= 'tab:h '
     else
