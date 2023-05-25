@@ -14,6 +14,7 @@ function! tabjumper#log() abort
 endfunction
 
 let s:bookmarks = {}
+let s:bid = -1
 function! s:set_config() abort
     let s:height = get(g:, 'tabjumper_height', 10)
     let s:bufname = 'TabJumper'
@@ -133,13 +134,16 @@ function! s:set_highlight() abort
 endfunction
 
 function! s:set_st_line() abort
-    let res = '  move:j,k,g,G'
+    let res = '  '
+    let res .= '?:help '
+    let res .= 'move:j,k,g,G'
     if s:win_mode
         let res .= ' '
     else
         let res .= ',[1-9] '
     endif
     let res .= 'close:q search:/,n,N '
+    let res .= '%<'
     if s:win_mode
         let res .= 'tab:h '
     else
@@ -230,10 +234,10 @@ function! s:ctrl_win() abort
             let key = getcharstr()
         catch /^Vim:Interrupt$/
             " ctrl-c (interrupt)
-            call s:close_preview()
+            call s:close_popup()
             break
         endtry
-        call s:close_preview()
+        call s:close_popup()
         call s:stop_timer()
         call s:set_timer()
         if key ==# 'q'
@@ -413,6 +417,8 @@ function! s:ctrl_win() abort
                 endif
             endif
             call s:set_timer()
+        elseif key ==# '?'
+            call s:show_help()
         endif
         call matchdelete(sel_id)
         if s:win_mode
@@ -496,43 +502,19 @@ function! s:set_preview(winid) abort
 endfunction
 
 function! s:show_preview(tid) abort
-    call s:close_preview()
+    call s:close_popup()
     let [tabn, winn] = s:get_cur_tab(1)
     let info = s:lines[tabn][winn+1]  " +1 ... tab line
     call s:debug_log(printf('preview win %d - %d', tabn, winn))
     let bufn = info.bufnr
     let winid = info.winid
     call s:debug_log(printf('preview bn:%d wid:%d', bufn, winid))
-    if has('popupwin')
-        if match(term_list(), printf('^%d$',bufn)) != -1
-            call s:debug_log('buf find in term_list: '..bufn)
-            return
-        endif
-        let config = {
-                    \ 'line': 'cursor-1',
-                    \ 'col': strchars(getline('.'))+3,
-                    \ 'pos': 'botleft',
-                    \ 'maxwidth': s:pre_w,
-                    \ 'maxheight': s:pre_h,
-                    \ 'cursorline': v:true,
-                    \ }
-        let s:pid = popup_create(bufn, config)
-    elseif has('nvim')
-        let config = {
-                    \ 'relative': 'cursor',
-                    \ 'row': 0,
-                    \ 'col': strchars(getline('.'))+2-getcurpos()[2],
-                    \ 'anchor': 'SW',
-                    \ 'width': s:pre_w,
-                    \ 'height': s:pre_h,
-                    \ }
-        let s:pid = nvim_open_win(bufn, v:false, config)
-    endif
     call win_execute(s:pid, printf("call %sset_preview(%d)", expand('<SID>'), winid))
+    call s:show_popup(bufn, s:pre_w, s:pre_h)
     redraw
 endfunction
 
-function! s:close_preview() abort
+function! s:close_popup() abort
     if s:pid > 0
         call s:debug_log(printf('close win %d', s:pid))
         if has('popupwin')
@@ -557,6 +539,84 @@ function! s:set_timer() abort
         call s:stop_timer()
         let s:tid = timer_start(s:t_time, ('<SID>')..'show_preview', {'repeat': 1})
     endif
+endfunction
+
+function s:show_popup(bufn, width, height) abort
+    if has('popupwin')
+        if match(term_list(), printf('^%d$',a:bufn)) != -1
+            call s:debug_log('buf find in term_list: '..a:bufn)
+            return
+        endif
+        let config = {
+                    \ 'line': 'cursor-1',
+                    \ 'col': strchars(getline('.'))+3,
+                    \ 'pos': 'botleft',
+                    \ 'maxwidth': a:width,
+                    \ 'maxheight': a:height,
+                    \ 'cursorline': v:true,
+                    \ }
+        let s:pid = popup_create(a:bufn, config)
+    elseif has('nvim')
+        let config = {
+                    \ 'relative': 'cursor',
+                    \ 'row': 0,
+                    \ 'col': strchars(getline('.'))+2-getcurpos()[2],
+                    \ 'anchor': 'SW',
+                    \ 'width': a:width,
+                    \ 'height': a:height,
+                    \ }
+        let s:pid = nvim_open_win(a:bufn, v:false, config)
+    endif
+endfunction
+
+function! s:show_help() abort
+    let help_txt = []
+    call add(help_txt, "?: show this help")
+    call add(help_txt, "q/<ESC>: quit")
+    call add(help_txt, "/: search word")
+    call add(help_txt, "n: move to next searching word")
+    call add(help_txt, "N: move to previous searching word")
+    if s:pre_enable == 'manual'
+        call add(help_txt, "p: show the preview")
+    endif
+    if s:win_mode
+        " call add(help_txt, "Tab mode")
+        call add(help_txt, "j/↓: move to next tab")
+        call add(help_txt, "k/↑: move to previous tab")
+        call add(help_txt, "g: move to top tab")
+        call add(help_txt, "G: move to last tab")
+        call add(help_txt, "1-9: jump to specified tab number")
+        call add(help_txt, "l: switch to window mode")
+        call add(help_txt, "#: jump to last accessed tab")
+        call add(help_txt, "+: move the current tab to the next")
+        call add(help_txt, "-: move the current tab to the previous")
+        call add(help_txt, "b: bookmark the current tab")
+        call add(help_txt, "<CR>: jump to current tab")
+    else
+        " call add(help_txt, "Window mode")
+        call add(help_txt, "j/↓: move to next window")
+        call add(help_txt, "k/↑: move to previous window")
+        call add(help_txt, "g: move to top window")
+        call add(help_txt, "G: move to last window")
+        call add(help_txt, "h: switch to tab mode")
+        call add(help_txt, "#: jump to last accessed tab")
+        call add(help_txt, "b: bookmark the current window (bookmarl is shown at the tab line)")
+    endif
+
+    if s:bid == -1
+        if has('popupwin')
+            let s:bid = bufadd('tabjumper_help')
+            call bufload(s:bid)
+            call setbufvar(s:bid, '&buflisted', 0)
+            call setbufvar(s:bid, '&buftype', 'nofile')
+        elseif has('nvim')
+            let s:bid = nvim_create_buf(v:false, v:true)
+        endif
+        call appendbufline(s:bid, 0, help_txt)
+        call setbufvar(s:bid, '&modifiable', 0)
+    endif
+    call s:close_popup()
+    call s:show_popup(s:bid, s:pre_w, len(help_txt)+1)
 endfunction
 
 function! tabjumper#jump() abort

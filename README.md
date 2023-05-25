@@ -24,6 +24,7 @@ In this window,
 - preview: p
 - tab move: +/-
 - quit: q/\<esc>
+- show help: ?
 
 ## Requirements
 
