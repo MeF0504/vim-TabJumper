@@ -497,6 +497,7 @@ function! s:set_preview(winid) abort
     " setlocal nomodifiable
     setlocal nonumber
     setlocal nowrap
+    " this doesn't work in Vim.↓
     call cursor(getcurpos(a:winid)[1:])
     normal! zz
 endfunction
@@ -510,7 +511,7 @@ function! s:show_preview(tid) abort
     let winid = info.winid
     call s:debug_log(printf('preview bn:%d wid:%d', bufn, winid))
     call win_execute(s:pid, printf("call %sset_preview(%d)", expand('<SID>'), winid))
-    call s:show_popup(bufn, s:pre_w, s:pre_h)
+    call s:show_popup(bufn, s:pre_w, s:pre_h, line('.', winid))
     redraw
 endfunction
 
@@ -541,7 +542,7 @@ function! s:set_timer() abort
     endif
 endfunction
 
-function s:show_popup(bufn, width, height) abort
+function s:show_popup(bufn, width, height, fline) abort
     if has('popupwin')
         if match(term_list(), printf('^%d$',a:bufn)) != -1
             call s:debug_log('buf find in term_list: '..a:bufn)
@@ -554,6 +555,7 @@ function s:show_popup(bufn, width, height) abort
                     \ 'maxwidth': a:width,
                     \ 'maxheight': a:height,
                     \ 'cursorline': v:true,
+                    \ 'firstline': a:fline,
                     \ }
         let s:pid = popup_create(a:bufn, config)
     elseif has('nvim')
@@ -616,7 +618,7 @@ function! s:show_help() abort
         call setbufvar(s:bid, '&modifiable', 0)
     endif
     call s:close_popup()
-    call s:show_popup(s:bid, s:pre_w, len(help_txt)+1)
+    call s:show_popup(s:bid, s:pre_w, len(help_txt)+1, 0)
 endfunction
 
 function! tabjumper#jump() abort
