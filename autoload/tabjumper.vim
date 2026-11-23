@@ -22,7 +22,7 @@ function! s:set_config() abort
     let s:mod_func = get(g:, 'tabjumper_mod_func', '')
     let s:last_tab = tabpagenr('#')
     let s:cur_tab = tabpagenr()
-    " tabjumper がwinnr最大以外だとずれるかも
+    " ↓ tabjumper がwinnr最大以外だとずれるかも
     let s:cur_winnr = winnr()
     let s:lines = []
     let s:search = ''
@@ -133,31 +133,37 @@ function! s:set_highlight() abort
     highlight default link TJSearch Search
 endfunction
 
-function! s:set_st_line() abort
-    let res = '  '
-    let res .= '?:help '
-    let res .= 'move:j,k,g,G'
-    if s:win_mode
-        let res .= ' '
+function! s:add_sl_str(sl, add_str, rsl) abort
+    let col = &columns
+    if col > len(a:sl)+len(a:rsl)+len(a:add_str)
+        return a:sl..a:add_str
     else
-        let res .= ',[1-9] '
+        return a:sl
     endif
-    let res .= 'close:q search:/,n,N '
-    let res .= '%<'
+endfunction
+
+function! s:set_st_line() abort
+    let linestr = ' '..(s:get_cur_tab(0)+1)..'/'..len(s:lines)..' '
+    let res = '  '
+    let res = s:add_sl_str(res, '?:help ', linestr)
+    let res = s:add_sl_str(res, 'move:j,k,g,G', linestr)
     if s:win_mode
-        let res .= 'tab:h '
+        let res = s:add_sl_str(res, ' ', linestr)
     else
-        let res .= 'pre:# win:l tabmove:+,- '
+        let res = s:add_sl_str(res, ',[1-9] ', linestr)
+    endif
+    let res = s:add_sl_str(res, 'close:q search:/,n,N ', linestr)
+    if s:win_mode
+        let res = s:add_sl_str(res, 'tab:h ', linestr)
+    else
+        let res = s:add_sl_str(res, 'pre:# win:l tabmove:+,- ', linestr)
     endif
     if s:pre_enable == 'manual'
-        let res .= 'preview:p '
+        let res = s:add_sl_str(res, 'preview:p ', linestr)
     endif
-    let res .= 'bookmark:b '
+    let res = s:add_sl_str(res, 'bookmark:b ', linestr)
     let res .= '%='
-    let res .= s:get_cur_tab(0)+1
-    let res .= '/'
-    let res .= len(s:lines)
-    let res .= ' '
+    let res .= linestr
     return res
 endfunction
 
@@ -328,8 +334,13 @@ function! s:ctrl_win() abort
             endif
             if !empty(s:search)
                 let search_id = matchadd('TJSearch', s:search, 15)
+                let sres = search(s:search)
+                if sres < 1
+                    " clear
+                    normal! <c-u>
+                    echo "Pattern not found."
+                endif
             endif
-            call search(s:search)
             call s:set_timer()
         elseif key ==# 'n'
             if !empty(s:search)
