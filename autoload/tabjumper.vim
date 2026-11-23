@@ -338,6 +338,7 @@ function! s:ctrl_win() abort
             endif
         elseif key ==# '/'
             call s:stop_timer()
+            nohlsearch
             let s:search = input('/', '', 'buffer')
             if search_id != -1
                 call matchdelete(search_id)
