@@ -2,6 +2,7 @@ scriptencoding utf-8
 
 augroup TabJumper
     autocmd!
+    autocmd InsertLeave * let s:last_edit_win = win_getid()
 augroup END
 
 function! tabjumper#log() abort
@@ -11,10 +12,13 @@ function! tabjumper#log() abort
 
     echo 'bookmarks: '
     echon s:bookmarks
+    echo 'last_edit_win: '
+    echon s:last_edit_win
 endfunction
 
 let s:bookmarks = {}
 let s:bid = -1
+let s:last_edit_win = -1
 function! s:set_config() abort
     let s:height = get(g:, 'tabjumper_height', 10)
     let s:bufname = 'TabJumper'
@@ -56,6 +60,13 @@ function! s:set_info() abort
             let info.status = '>'
         elseif i == s:last_tab
             let info.status = '#'
+        elseif s:last_edit_win != -1
+            let info.status = ' '
+            for j in range(1, tabpagewinnr(i, '$'))
+                if s:last_edit_win == win_getid(j, i)
+                    let info.status = '+'
+                endif
+            endfor
         else
             let info.status = ' '
         endif
